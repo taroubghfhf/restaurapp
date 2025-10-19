@@ -3,6 +3,11 @@ package com.restaurapp.restaurapp.controller;
 import com.restaurapp.restaurapp.domain.model.User;
 import com.restaurapp.restaurapp.domain.model.UserDetailsImpl;
 import com.restaurapp.restaurapp.config.TokenUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +22,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Autenticación", description = "Endpoints para autenticación de usuarios")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -25,6 +31,29 @@ public class AuthController {
         this.authenticationManager = authenticationManager;
     }
 
+    @Operation(
+            summary = "Iniciar sesión",
+            description = "Autentica un usuario y retorna un token JWT junto con información del usuario"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Autenticación exitosa",
+                    content = @Content(mediaType = "application/json")
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Datos de entrada inválidos"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Credenciales incorrectas"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User user) {
         try {

@@ -2,6 +2,8 @@ package com.restaurapp.restaurapp.config;
 
 import com.restaurapp.restaurapp.domain.exception.CustomError;
 import com.restaurapp.restaurapp.domain.exception.ExistRecordException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -13,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @ControllerAdvice
 public class ErrorHandler extends ResponseEntityExceptionHandler {
 
+    private static final Logger logger = LoggerFactory.getLogger(ErrorHandler.class);
 
     private static final String AN_ERROR_OCCURRED_PLEASE_CONTACT_THE_ADMINISTRATOR = "Error en el servidor";
 
@@ -30,6 +33,10 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
         String exceptionName = exception.getClass().getSimpleName();
         String message = exception.getMessage();
         Integer code = STATUS_CODE.get(exceptionName);
+
+        // Log completo del error para debugging
+        logger.error("Exception caught in ErrorHandler: {} - {}", exceptionName, message);
+        logger.error("Full stack trace:", exception);
 
         if (code != null) {
             CustomError customError = new CustomError(exceptionName, message);

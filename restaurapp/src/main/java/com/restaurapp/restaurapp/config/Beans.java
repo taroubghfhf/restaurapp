@@ -42,12 +42,28 @@ import com.restaurapp.restaurapp.service.userphone.CreateUserPhoneService;
 import com.restaurapp.restaurapp.service.userphone.DeleteUserPhoneService;
 import com.restaurapp.restaurapp.service.userphone.GetUserPhoneService;
 import com.restaurapp.restaurapp.service.notification.OrderNotificationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 public class Beans {
+    
+    @Bean
+    @Primary
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        Hibernate6Module hibernate6Module = new Hibernate6Module();
+        // Configurar para que ignore las propiedades lazy no inicializadas
+        hibernate6Module.configure(Hibernate6Module.Feature.FORCE_LAZY_LOADING, false);
+        hibernate6Module.configure(Hibernate6Module.Feature.SERIALIZE_IDENTIFIER_FOR_LAZY_NOT_LOADED_OBJECTS, true);
+        mapper.registerModule(hibernate6Module);
+        return mapper;
+    }
+    
     @Bean
     public CreateCategoryService createCategoryService(CategoryRepositoryJpa categoryRepositoryJpa) {
         return new CreateCategoryService(categoryRepositoryJpa);

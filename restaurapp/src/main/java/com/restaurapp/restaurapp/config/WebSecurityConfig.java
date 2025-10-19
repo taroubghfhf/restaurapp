@@ -38,6 +38,8 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login").permitAll()
                         
+                        // Swagger UI
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                       
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/websocket-client-example.html").permitAll()
