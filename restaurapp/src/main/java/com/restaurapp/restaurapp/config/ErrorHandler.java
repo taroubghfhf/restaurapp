@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -24,6 +25,27 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
     public ErrorHandler() {
         STATUS_CODE.put(RuntimeException.class.getSimpleName(), HttpStatus.BAD_REQUEST.value());
         STATUS_CODE.put(ExistRecordException.class.getSimpleName(), HttpStatus.CONFLICT.value());
+        STATUS_CODE.put(HttpMessageConversionException.class.getSimpleName(), HttpStatus.BAD_REQUEST.value());
+    }
+
+    @ExceptionHandler(HttpMessageConversionException.class)
+    public final ResponseEntity<CustomError> handleHttpMessageConversionException(HttpMessageConversionException exception) {
+        logger.error("Error de conversión de mensaje HTTP: {}", exception.getMessage());
+        logger.error("Causa raíz:", exception.getCause());
+        logger.error("Stack trace completo:", exception);
+        
+        String detailedMessage = "Error al procesar el mensaje: ";
+        if (exception.getCause() != null) {
+            detailedMessage += exception.getCause().getMessage();
+        } else {
+            detailedMessage += exception.getMessage();
+        }
+        
+        CustomError customError = new CustomError(
+            exception.getClass().getSimpleName(), 
+            detailedMessage
+        );
+        return new ResponseEntity<>(customError, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)

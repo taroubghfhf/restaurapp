@@ -43,6 +43,8 @@ import com.restaurapp.restaurapp.service.userphone.DeleteUserPhoneService;
 import com.restaurapp.restaurapp.service.userphone.GetUserPhoneService;
 import com.restaurapp.restaurapp.service.notification.OrderNotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,10 +58,20 @@ public class Beans {
     @Primary
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
+        
+        // Configurar módulo de Hibernate para manejar entidades JPA
         Hibernate6Module hibernate6Module = new Hibernate6Module();
         hibernate6Module.configure(Hibernate6Module.Feature.FORCE_LAZY_LOADING, false);
         hibernate6Module.configure(Hibernate6Module.Feature.SERIALIZE_IDENTIFIER_FOR_LAZY_NOT_LOADED_OBJECTS, true);
         mapper.registerModule(hibernate6Module);
+        
+        // Configurar módulo de Java Time para manejar LocalDateTime y otros tipos de fecha/hora
+        JavaTimeModule javaTimeModule = new JavaTimeModule();
+        mapper.registerModule(javaTimeModule);
+        
+        // Deshabilitar la serialización de fechas como timestamps (usar formato ISO-8601)
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        
         return mapper;
     }
     
