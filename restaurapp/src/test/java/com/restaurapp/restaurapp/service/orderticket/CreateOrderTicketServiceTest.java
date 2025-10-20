@@ -21,6 +21,18 @@ class CreateOrderTicketServiceTest {
     @Mock
     private OrderTicketRepositoryJpa orderTicketRepositoryJpa;
 
+    @Mock
+    private com.restaurapp.restaurapp.domain.repository.TableRepositoryJpa tableRepositoryJpa;
+
+    @Mock
+    private com.restaurapp.restaurapp.domain.repository.UserRepositoryJpa userRepositoryJpa;
+
+    @Mock
+    private com.restaurapp.restaurapp.domain.repository.StatusRepositoryJpa statusRepositoryJpa;
+
+    @Mock
+    private com.restaurapp.restaurapp.service.notification.OrderNotificationService notificationService;
+
     @InjectMocks
     private CreateOrderTicketService createOrderTicketService;
 
@@ -47,13 +59,19 @@ class CreateOrderTicketServiceTest {
     @Test
     void execute_ShouldCreateOrderTicket() {
         // Given
+        when(tableRepositoryJpa.findById(1L)).thenReturn(Optional.of(orderTicket.getTable()));
+        when(userRepositoryJpa.findById(1L)).thenReturn(Optional.of(orderTicket.getWaiter()));
+        when(userRepositoryJpa.findById(2L)).thenReturn(Optional.of(orderTicket.getChef()));
+        when(statusRepositoryJpa.findById(1L)).thenReturn(Optional.of(orderTicket.getStatus()));
         when(orderTicketRepositoryJpa.save(any(OrderTicket.class))).thenReturn(orderTicket);
+        doNothing().when(notificationService).notifyOrderCreated(any(OrderTicket.class));
 
         // When
         createOrderTicketService.execute(orderTicket);
 
         // Then
         verify(orderTicketRepositoryJpa, times(1)).save(orderTicket);
+        verify(notificationService, times(1)).notifyOrderCreated(any(OrderTicket.class));
     }
 }
 

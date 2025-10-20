@@ -21,6 +21,9 @@ class CreateOrderItemServiceTest {
     @Mock
     private OrderItemRepositoryJpa orderItemRepositoryJpa;
 
+    @Mock
+    private com.restaurapp.restaurapp.domain.repository.OrderTicketRepositoryJpa orderTicketRepositoryJpa;
+
     @InjectMocks
     private CreateOrderItemService createOrderItemService;
 
@@ -51,12 +54,14 @@ class CreateOrderItemServiceTest {
     @Test
     void execute_ShouldCreateOrderItem() {
         // Given
+        when(orderTicketRepositoryJpa.findById(1L)).thenReturn(Optional.of(orderItem.getOrderTicket()));
         when(orderItemRepositoryJpa.save(any(OrderItem.class))).thenReturn(orderItem);
 
         // When
         createOrderItemService.execute(orderItem);
 
         // Then
+        verify(orderTicketRepositoryJpa, times(1)).findById(1L);
         verify(orderItemRepositoryJpa, times(1)).save(orderItem);
     }
 }

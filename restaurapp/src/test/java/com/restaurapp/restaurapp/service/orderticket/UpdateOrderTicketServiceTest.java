@@ -27,6 +27,9 @@ class UpdateOrderTicketServiceTest {
     @Mock
     private StatusRepositoryJpa statusRepositoryJpa;
 
+    @Mock
+    private com.restaurapp.restaurapp.service.notification.OrderNotificationService notificationService;
+
     @InjectMocks
     private UpdateOrderTicketService updateOrderTicketService;
 
@@ -55,6 +58,7 @@ class UpdateOrderTicketServiceTest {
         // Given
         doReturn(Optional.of(orderTicket)).when(orderTicketRepositoryJpa).findById(anyLong());
         when(orderTicketRepositoryJpa.save(any(OrderTicket.class))).thenReturn(orderTicket);
+        doNothing().when(notificationService).notifyOrderStatusChange(any(OrderTicket.class));
 
         // When
         updateOrderTicketService.execute(orderTicket);
@@ -62,6 +66,7 @@ class UpdateOrderTicketServiceTest {
         // Then
         verify(orderTicketRepositoryJpa, times(1)).findById(1L);
         verify(orderTicketRepositoryJpa, times(1)).save(orderTicket);
+        verify(notificationService, times(1)).notifyOrderStatusChange(any(OrderTicket.class));
     }
 
     @Test
@@ -94,6 +99,7 @@ class UpdateOrderTicketServiceTest {
         when(orderTicketRepositoryJpa.findById(1L)).thenReturn(Optional.of(orderTicket));
         when(statusRepositoryJpa.findById(2L)).thenReturn(Optional.of(newStatus));
         when(orderTicketRepositoryJpa.save(any(OrderTicket.class))).thenReturn(updatedOrderTicket);
+        doNothing().when(notificationService).notifyOrderStatusChange(any(OrderTicket.class));
 
         // When
         OrderTicket result = updateOrderTicketService.updateStatus(1, 2);
@@ -105,6 +111,7 @@ class UpdateOrderTicketServiceTest {
         verify(orderTicketRepositoryJpa, times(1)).findById(1L);
         verify(statusRepositoryJpa, times(1)).findById(2L);
         verify(orderTicketRepositoryJpa, times(1)).save(any(OrderTicket.class));
+        verify(notificationService, times(1)).notifyOrderStatusChange(any(OrderTicket.class));
     }
 
     @Test
@@ -154,6 +161,7 @@ class UpdateOrderTicketServiceTest {
             OrderTicket savedTicket = invocation.getArgument(0);
             return savedTicket;
         });
+        doNothing().when(notificationService).notifyOrderStatusChange(any(OrderTicket.class));
 
         // When
         OrderTicket result = updateOrderTicketService.updateStatus(1, 2);
@@ -165,6 +173,7 @@ class UpdateOrderTicketServiceTest {
         verify(orderTicketRepositoryJpa, times(1)).findById(1L);
         verify(statusRepositoryJpa, times(1)).findById(2L);
         verify(orderTicketRepositoryJpa, times(1)).save(any(OrderTicket.class));
+        verify(notificationService, times(1)).notifyOrderStatusChange(any(OrderTicket.class));
     }
 
     @Test
@@ -181,6 +190,7 @@ class UpdateOrderTicketServiceTest {
             OrderTicket savedTicket = invocation.getArgument(0);
             return savedTicket;
         });
+        doNothing().when(notificationService).notifyOrderStatusChange(any(OrderTicket.class));
 
         // When
         OrderTicket result = updateOrderTicketService.updateStatus(1, 3);
@@ -192,6 +202,7 @@ class UpdateOrderTicketServiceTest {
         verify(orderTicketRepositoryJpa, times(1)).findById(1L);
         verify(statusRepositoryJpa, times(1)).findById(3L);
         verify(orderTicketRepositoryJpa, times(1)).save(any(OrderTicket.class));
+        verify(notificationService, times(1)).notifyOrderStatusChange(any(OrderTicket.class));
     }
 }
 
