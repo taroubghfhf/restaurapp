@@ -126,6 +126,24 @@
             ❌ Desconectado
         </div>
         
+        <div class="subscription-options">
+            <h3>⚙️ Configuración de Conexión</h3>
+            <label>
+                <input type="checkbox" id="useCustomUrl" onchange="toggleCustomUrl()"> 
+                Usar URL personalizada (para EC2 AWS)
+            </label>
+            <div id="customUrlDiv" style="display: none; margin-top: 10px;">
+                <label>
+                    URL del servidor: 
+                    <input type="text" id="customUrl" placeholder="http://tu-ip-ec2:8080/ws" style="width: 300px;">
+                </label>
+                <small style="display: block; color: #666; margin-top: 5px;">
+                    Ejemplo: http://ec2-xx-xxx-xxx-xxx.compute-1.amazonaws.com:8080/ws<br>
+                    O: http://tu-ip-publica:8080/ws
+                </small>
+            </div>
+        </div>
+        
         <div class="button-group">
             <button class="btn-connect" onclick="connect()">Conectar WebSocket</button>
             <button class="btn-disconnect" onclick="disconnect()">Desconectar</button>
@@ -163,22 +181,69 @@
         let stompClient = null;
         let subscriptions = [];
 
-        function connect() {
-            // Crear conexión SockJS
-            const socket = new SockJS('http://localhost:8080/ws');
-            stompClient = Stomp.over(socket);
+        // Función para mostrar/ocultar campo de URL personalizada
+        function toggleCustomUrl() {
+            const customUrlDiv = document.getElementById('customUrlDiv');
+            const useCustom = document.getElementById('useCustomUrl').checked;
+            customUrlDiv.style.display = useCustom ? 'block' : 'none';
+        }
+
+        // Detectar automáticamente la URL del WebSocket
+        function getWebSocketUrl() {
+            // Si el usuario marcó usar URL personalizada
+            if (document.getElementById('useCustomUrl').checked) {
+                const customUrl = document.getElementById('customUrl').value.trim();
+                if (customUrl) {
+                    return customUrl;
+                } else {
+                    alert('Por favor ingresa una URL personalizada');
+                    return null;
+                }
+            }
             
-            // Conectar al servidor WebSocket
-            stompClient.connect({}, function(frame) {
-                console.log('Conectado: ' + frame);
-                updateStatus(true);
+            const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
+            const host = window.location.host;
+            
+            // Si estamos accediendo desde localhost, usar localhost
+            // Si no, usar el host actual (IP de EC2 o dominio)
+            if (host.includes('localhost') || host.includes('127.0.0.1')) {
+                return 'http://localhost:8080/ws';
+            } else {
+                // Usar el mismo host y protocolo que la página actual
+                return protocol + host + '/ws';
+            }
+        }
+
+        function connect() {
+            const wsUrl = getWebSocketUrl();
+            
+            if (!wsUrl) {
+                return; // Si no hay URL válida, no intentar conectar
+            }
+            
+            console.log('Intentando conectar a:', wsUrl);
+            
+            try {
+                // Crear conexión SockJS
+                const socket = new SockJS(wsUrl);
+                stompClient = Stomp.over(socket);
                 
-                // Suscribirse a todos los canales seleccionados
-                subscribeToChannels();
-            }, function(error) {
-                console.error('Error de conexión:', error);
-                updateStatus(false);
-            });
+                // Conectar al servidor WebSocket
+                stompClient.connect({}, function(frame) {
+                    console.log('✅ Conectado exitosamente: ' + frame);
+                    updateStatus(true);
+                    
+                    // Suscribirse a todos los canales seleccionados
+                    subscribeToChannels();
+                }, function(error) {
+                    console.error('❌ Error de conexión:', error);
+                    updateStatus(false);
+                    alert('Error al conectar. Verifica:\n1. Que el servidor esté corriendo\n2. La URL sea correcta\n3. El puerto 8080 esté abierto en Security Groups (AWS)');
+                });
+            } catch (error) {
+                console.error('❌ Error al crear conexión:', error);
+                alert('Error: ' + error.message);
+            }
         }
 
         function subscribeToChannels() {
