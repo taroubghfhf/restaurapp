@@ -1,0 +1,259 @@
+<div class="websocket-monitor-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">🔌</span>
+        Monitor de WebSocket
+      </h1>
+      <p class="subtitle">Configuración y monitoreo en tiempo real</p>
+    </div>
+    <div class="connection-status" [class.connected]="isConnected()" [class.disconnected]="!isConnected()">
+      <span class="status-dot"></span>
+      <span class="status-text">{{ isConnected() ? 'Conectado' : 'Desconectado' }}</span>
+    </div>
+  </div>
+
+  <div class="monitor-grid">
+    <!-- Panel de Configuración -->
+    <div class="card config-panel">
+      <div class="card-header">
+        <h2>⚙️ Configuración</h2>
+      </div>
+      <div class="card-body">
+        <!-- Protocolo -->
+        <div class="form-group">
+          <label>Protocolo</label>
+          <select 
+            class="form-control"
+            [ngModel]="config().protocol"
+            (ngModelChange)="updateConfig('protocol', $event)"
+            [disabled]="isConnected()">
+            <option value="ws">WS (WebSocket)</option>
+            <option value="wss">WSS (WebSocket Seguro)</option>
+          </select>
+        </div>
+
+        <!-- Host -->
+        <div class="form-group">
+          <label>Host / IP</label>
+          <input 
+            type="text"
+            class="form-control"
+            [ngModel]="config().host"
+            (ngModelChange)="updateConfig('host', $event)"
+            [disabled]="isConnected()"
+            placeholder="localhost">
+          <div class="form-hint">
+            💡 Ejemplos: localhost, 192.168.1.100, example.com
+          </div>
+        </div>
+
+        <!-- Puerto -->
+        <div class="form-group">
+          <label>Puerto</label>
+          <input 
+            type="number"
+            class="form-control"
+            [ngModel]="config().port"
+            (ngModelChange)="updateConfig('port', +$event)"
+            [disabled]="isConnected()"
+            placeholder="8080">
+        </div>
+
+        <!-- Path -->
+        <div class="form-group">
+          <label>Ruta</label>
+          <input 
+            type="text"
+            class="form-control"
+            [ngModel]="config().path"
+            (ngModelChange)="updateConfig('path', $event)"
+            [disabled]="isConnected()"
+            placeholder="/ws">
+          <div class="form-hint">
+            💡 Ruta del endpoint WebSocket en el servidor
+          </div>
+        </div>
+
+        <!-- URL Completa -->
+        <div class="url-preview">
+          <label>URL Completa:</label>
+          <code class="url-text">{{ config().protocol }}://{{ config().host }}:{{ config().port }}{{ config().path }}</code>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="action-buttons">
+          <button 
+            class="btn-primary"
+            (click)="connect()"
+            [disabled]="isConnected() || isConnecting()">
+            <span *ngIf="!isConnecting()">🔗 Conectar</span>
+            <span *ngIf="isConnecting()">⏳ Conectando...</span>
+          </button>
+          <button 
+            class="btn-danger"
+            (click)="disconnect()"
+            [disabled]="!isConnected()">
+            🔌 Desconectar
+          </button>
+          <button 
+            class="btn-secondary"
+            (click)="saveConfig()"
+            [disabled]="isConnected()">
+            💾 Guardar Config
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de Estadísticas -->
+    <div class="card stats-panel">
+      <div class="card-header">
+        <h2>📊 Estadísticas</h2>
+        <button class="btn-icon" (click)="resetStats()" title="Resetear estadísticas">
+          🔄
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-icon">🔌</div>
+            <div class="stat-content">
+              <span class="stat-label">Estado</span>
+              <span class="stat-value" [class.connected]="stats().connected" [class.disconnected]="!stats().connected">
+                {{ stats().connected ? 'Conectado' : 'Desconectado' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-content">
+              <span class="stat-label">Duración</span>
+              <span class="stat-value">{{ getConnectionDuration() }}</span>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-icon">📨</div>
+            <div class="stat-content">
+              <span class="stat-label">Mensajes</span>
+              <span class="stat-value">{{ stats().totalMessages }}</span>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-icon">🕐</div>
+            <div class="stat-content">
+              <span class="stat-label">Último mensaje</span>
+              <span class="stat-value">
+                {{ stats().lastMessageAt ? formatTime(stats().lastMessageAt!) : '-' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de Envío de Mensajes -->
+    <div class="card send-panel">
+      <div class="card-header">
+        <h2>📤 Enviar Mensaje</h2>
+      </div>
+      <div class="card-body">
+        <div class="example-buttons">
+          <button class="btn-example" (click)="loadExampleMessage('order')">
+            📋 Orden
+          </button>
+          <button class="btn-example" (click)="loadExampleMessage('status')">
+            🎯 Estado
+          </button>
+          <button class="btn-example" (click)="loadExampleMessage('notification')">
+            🔔 Notificación
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label>Mensaje (JSON o texto)</label>
+          <textarea 
+            class="form-control message-input"
+            [(ngModel)]="testMessage"
+            [disabled]="!isConnected()"
+            placeholder='{"type": "TEST", "data": "Mensaje de prueba"}'
+            rows="6"></textarea>
+          <div class="form-hint">
+            💡 Puedes enviar JSON o texto simple
+          </div>
+        </div>
+
+        <button 
+          class="btn-primary btn-block"
+          (click)="sendTestMessage()"
+          [disabled]="!isConnected() || !testMessage().trim()">
+          📨 Enviar Mensaje
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel de Log de Mensajes -->
+    <div class="card log-panel">
+      <div class="card-header">
+        <h2>📜 Log de Mensajes</h2>
+        <div class="header-actions">
+          <label class="auto-scroll-toggle">
+            <input 
+              type="checkbox" 
+              [ngModel]="autoScroll()"
+              (ngModelChange)="autoScroll.set($event)">
+            Auto-scroll
+          </label>
+          <button class="btn-icon" (click)="clearMessages()" title="Limpiar log">
+            🗑️
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="messages-log" *ngIf="messages().length > 0; else noMessages">
+          <div 
+            *ngFor="let message of messages()"
+            class="message-item"
+            [class.received]="message.type === 'received'"
+            [class.sent]="message.type === 'sent'"
+            [class.system]="message.type === 'system'">
+            
+            <div class="message-header">
+              <span class="message-type">
+                <span *ngIf="message.type === 'received'">📥 Recibido</span>
+                <span *ngIf="message.type === 'sent'">📤 Enviado</span>
+                <span *ngIf="message.type === 'system'">ℹ️ Sistema</span>
+              </span>
+              <span class="message-time">{{ formatTime(message.timestamp) }}</span>
+            </div>
+
+            <div class="message-body">
+              <pre *ngIf="message.type !== 'system'">{{ formatJson(message.data) }}</pre>
+              <div 
+                *ngIf="message.type === 'system'" 
+                class="system-message"
+                [class.info]="message.data.level === 'info'"
+                [class.success]="message.data.level === 'success'"
+                [class.error]="message.data.level === 'error'">
+                {{ message.data.text }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #noMessages>
+          <div class="empty-log">
+            <div class="empty-icon">📭</div>
+            <p>No hay mensajes aún</p>
+            <p class="hint">Los mensajes aparecerán aquí cuando estés conectado</p>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>
+

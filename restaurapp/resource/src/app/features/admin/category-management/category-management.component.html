@@ -1,0 +1,215 @@
+<div class="category-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">📦</span>
+        Gestión de Categorías
+      </h1>
+      <p class="subtitle">Administra las categorías de productos del menú</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()" [disabled]="isLoading()">
+      <span class="btn-icon">+</span>
+      Nueva Categoría
+    </button>
+  </div>
+
+  <!-- Loading Spinner -->
+  <app-loading 
+    [isLoading]="isLoading()" 
+    [fullscreen]="false"
+    message="Cargando categorías...">
+  </app-loading>
+
+  <!-- Tabla de Categorías -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lista de Categorías</h2>
+      <span class="badge">{{ categories().length }} categorías</span>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading()">
+      <table class="data-table" *ngIf="categories().length > 0; else noCategories">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Categoría</th>
+            <th>Nombre</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let category of categories(); let i = index; trackBy: trackByCategoryId">
+            <td>
+              <span class="category-id">#{{ category.categoryId }}</span>
+            </td>
+            <td>
+              <div class="category-preview">
+                <span class="category-badge" [class]="getCategoryClass(i)">
+                  <span class="category-icon">{{ getCategoryIcon(category.name) }}</span>
+                  {{ category.name }}
+                </span>
+              </div>
+            </td>
+            <td>
+              <span class="category-name-text">{{ category.name }}</span>
+            </td>
+            <td class="actions">
+              <button 
+                class="btn-action btn-edit"
+                (click)="openEditModal(category)"
+                [disabled]="isLoading()"
+                title="Editar categoría">
+                ✏️ Editar
+              </button>
+              <button 
+                class="btn-action btn-delete"
+                (click)="deleteCategory(category)"
+                [disabled]="isLoading()"
+                title="Eliminar categoría">
+                🗑️ Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <ng-template #noCategories>
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <h3>No hay categorías registradas</h3>
+          <p>Las categorías ayudan a organizar el menú de productos</p>
+          <div class="example-list">
+            <p><strong>Ejemplos de categorías:</strong></p>
+            <ul>
+              <li>🥤 Bebidas</li>
+              <li>🍽️ Platos Fuertes</li>
+              <li>🥗 Entradas</li>
+              <li>🍰 Postres</li>
+              <li>🍕 Pizzas</li>
+              <li>☕ Café</li>
+            </ul>
+          </div>
+          <button class="btn-primary" (click)="openCreateModal()">
+            <span class="btn-icon">+</span>
+            Crear Primera Categoría
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal de Crear/Editar -->
+  <div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="modal-icon">{{ isEditing() ? '✏️' : '➕' }}</span>
+          {{ isEditing() ? 'Editar Categoría' : 'Nueva Categoría' }}
+        </h2>
+        <button class="btn-close" (click)="closeModal()" [disabled]="isLoading()">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveCategory()" #categoryForm="ngForm">
+          <!-- ID (solo en modo edición) -->
+          <div class="form-group" *ngIf="isEditing()">
+            <label>ID de la Categoría</label>
+            <input 
+              type="text" 
+              [value]="currentCategory().categoryId" 
+              disabled
+              class="form-control">
+          </div>
+
+          <!-- Vista Previa de la Categoría -->
+          <div class="form-group" *ngIf="currentCategory().name.trim()">
+            <label>Vista Previa</label>
+            <div class="category-preview-box">
+              <span class="category-badge cat-preview">
+                <span class="category-icon">{{ getCategoryIcon(currentCategory().name) }}</span>
+                {{ currentCategory().name }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Nombre de la Categoría -->
+          <div class="form-group">
+            <label for="categoryName">
+              <span class="required">*</span>
+              Nombre de la Categoría
+            </label>
+            <input 
+              type="text"
+              id="categoryName"
+              name="categoryName"
+              [ngModel]="currentCategory().name"
+              (ngModelChange)="updateCategoryName($event)"
+              required
+              maxlength="20"
+              placeholder="Ej: Bebidas, Platos Fuertes, Postres"
+              class="form-control"
+              [disabled]="isLoading()"
+              #categoryNameInput="ngModel">
+            
+            <div class="form-hint" *ngIf="!categoryNameInput.errors">
+              {{ currentCategory().name.length }}/20 caracteres
+            </div>
+            
+            <div class="form-error" *ngIf="categoryNameInput.touched && categoryNameInput.errors?.['required']">
+              El nombre de la categoría es requerido
+            </div>
+
+            <div class="form-info">
+              <strong>💡 Tip:</strong> Usa nombres descriptivos y cortos (máx. 20 caracteres)
+            </div>
+          </div>
+
+          <!-- Ejemplos de Categorías Comunes -->
+          <div class="examples-section">
+            <h4>🍽️ Categorías Comunes:</h4>
+            <div class="example-badges">
+              <span class="example-badge" (click)="updateCategoryName('Bebidas')">🥤 Bebidas</span>
+              <span class="example-badge" (click)="updateCategoryName('Entradas')">🥗 Entradas</span>
+              <span class="example-badge" (click)="updateCategoryName('Platos Fuertes')">🍖 Platos Fuertes</span>
+              <span class="example-badge" (click)="updateCategoryName('Postres')">🍰 Postres</span>
+              <span class="example-badge" (click)="updateCategoryName('Pizzas')">🍕 Pizzas</span>
+              <span class="example-badge" (click)="updateCategoryName('Pasta')">🍝 Pasta</span>
+              <span class="example-badge" (click)="updateCategoryName('Ensaladas')">🥗 Ensaladas</span>
+              <span class="example-badge" (click)="updateCategoryName('Café')">☕ Café</span>
+              <span class="example-badge" (click)="updateCategoryName('Cócteles')">🍹 Cócteles</span>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-actions">
+            <button 
+              type="button" 
+              class="btn-secondary"
+              (click)="closeModal()"
+              [disabled]="isLoading()">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!categoryForm.valid || isLoading()">
+              <span *ngIf="!isLoading()">
+                {{ isEditing() ? '💾 Actualizar' : '➕ Crear' }}
+              </span>
+              <span *ngIf="isLoading()">
+                Guardando...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+

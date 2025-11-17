@@ -1,0 +1,210 @@
+<div class="status-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">🎯</span>
+        Gestión de Estados
+      </h1>
+      <p class="subtitle">Administra los estados del sistema (Mesas, Productos, Órdenes)</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()" [disabled]="isLoading()">
+      <span class="btn-icon">+</span>
+      Nuevo Estado
+    </button>
+  </div>
+
+  <!-- Loading Spinner -->
+  <app-loading 
+    [isLoading]="isLoading()" 
+    [fullscreen]="false"
+    message="Cargando estados...">
+  </app-loading>
+
+  <!-- Tabla de Estados -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lista de Estados</h2>
+      <span class="badge">{{ statuses().length }} estados</span>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading()">
+      <table class="data-table" *ngIf="statuses().length > 0; else noStatuses">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Estado</th>
+            <th>Nombre</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let status of statuses(); trackBy: trackByStatusId">
+            <td>
+              <span class="status-id">#{{ status.statusId }}</span>
+            </td>
+            <td>
+              <div class="status-preview">
+                <span class="status-badge" [class]="getStatusClass(status.name)">
+                  <span class="status-icon">{{ getStatusIcon(status.name) }}</span>
+                  {{ status.name }}
+                </span>
+              </div>
+            </td>
+            <td>
+              <span class="status-name-text">{{ status.name }}</span>
+            </td>
+            <td class="actions">
+              <button 
+                class="btn-action btn-edit"
+                (click)="openEditModal(status)"
+                [disabled]="isLoading()"
+                title="Editar estado">
+                ✏️ Editar
+              </button>
+              <button 
+                class="btn-action btn-delete"
+                (click)="deleteStatus(status)"
+                [disabled]="isLoading()"
+                title="Eliminar estado">
+                🗑️ Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <ng-template #noStatuses>
+        <div class="empty-state">
+          <div class="empty-icon">🎯</div>
+          <h3>No hay estados registrados</h3>
+          <p>Los estados se utilizan para clasificar el estatus de mesas, productos y órdenes</p>
+          <div class="example-list">
+            <p><strong>Ejemplos de estados:</strong></p>
+            <ul>
+              <li>✅ Disponible / Activo</li>
+              <li>⏳ Pendiente</li>
+              <li>🎉 Completado</li>
+              <li>❌ Cancelado</li>
+            </ul>
+          </div>
+          <button class="btn-primary" (click)="openCreateModal()">
+            <span class="btn-icon">+</span>
+            Crear Primer Estado
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal de Crear/Editar -->
+  <div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="modal-icon">{{ isEditing() ? '✏️' : '➕' }}</span>
+          {{ isEditing() ? 'Editar Estado' : 'Nuevo Estado' }}
+        </h2>
+        <button class="btn-close" (click)="closeModal()" [disabled]="isLoading()">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveStatus()" #statusForm="ngForm">
+          <!-- ID (solo en modo edición) -->
+          <div class="form-group" *ngIf="isEditing()">
+            <label>ID del Estado</label>
+            <input 
+              type="text" 
+              [value]="currentStatus().statusId" 
+              disabled
+              class="form-control">
+          </div>
+
+          <!-- Vista Previa del Estado -->
+          <div class="form-group" *ngIf="currentStatus().name.trim()">
+            <label>Vista Previa</label>
+            <div class="status-preview-box">
+              <span class="status-badge" [class]="getStatusClass(currentStatus().name)">
+                <span class="status-icon">{{ getStatusIcon(currentStatus().name) }}</span>
+                {{ currentStatus().name }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Nombre del Estado -->
+          <div class="form-group">
+            <label for="statusName">
+              <span class="required">*</span>
+              Nombre del Estado
+            </label>
+            <input 
+              type="text"
+              id="statusName"
+              name="statusName"
+              [ngModel]="currentStatus().name"
+              (ngModelChange)="updateStatusName($event)"
+              required
+              maxlength="10"
+              placeholder="Ej: Disponible, Ocupado, Pendiente"
+              class="form-control"
+              [disabled]="isLoading()"
+              #statusNameInput="ngModel">
+            
+            <div class="form-hint" *ngIf="!statusNameInput.errors">
+              {{ currentStatus().name.length }}/10 caracteres
+            </div>
+            
+            <div class="form-error" *ngIf="statusNameInput.touched && statusNameInput.errors?.['required']">
+              El nombre del estado es requerido
+            </div>
+
+            <div class="form-info">
+              <strong>💡 Tip:</strong> Usa nombres cortos y descriptivos (máx. 10 caracteres)
+            </div>
+          </div>
+
+          <!-- Ejemplos de Estados Comunes -->
+          <div class="examples-section">
+            <h4>📝 Estados Comunes:</h4>
+            <div class="example-badges">
+              <span class="example-badge" (click)="updateStatusName('Disponible')">✅ Disponible</span>
+              <span class="example-badge" (click)="updateStatusName('Ocupado')">🔒 Ocupado</span>
+              <span class="example-badge" (click)="updateStatusName('Pendiente')">⏳ Pendiente</span>
+              <span class="example-badge" (click)="updateStatusName('Listo')">✨ Listo</span>
+              <span class="example-badge" (click)="updateStatusName('Cancelado')">❌ Cancelado</span>
+              <span class="example-badge" (click)="updateStatusName('Completado')">🎉 Completado</span>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-actions">
+            <button 
+              type="button" 
+              class="btn-secondary"
+              (click)="closeModal()"
+              [disabled]="isLoading()">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!statusForm.valid || isLoading()">
+              <span *ngIf="!isLoading()">
+                {{ isEditing() ? '💾 Actualizar' : '➕ Crear' }}
+              </span>
+              <span *ngIf="isLoading()">
+                Guardando...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+

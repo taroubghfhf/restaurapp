@@ -1,0 +1,168 @@
+<div class="role-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">👥</span>
+        Gestión de Roles
+      </h1>
+      <p class="subtitle">Administra los roles del sistema</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()" [disabled]="isLoading()">
+      <span class="btn-icon">+</span>
+      Nuevo Rol
+    </button>
+  </div>
+
+  <!-- Loading Spinner -->
+  <app-loading 
+    [isLoading]="isLoading()" 
+    [fullscreen]="false"
+    message="Cargando roles...">
+  </app-loading>
+
+  <!-- Tabla de Roles -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lista de Roles</h2>
+      <span class="badge">{{ roles().length }} roles</span>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading()">
+      <table class="data-table" *ngIf="roles().length > 0; else noRoles">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let role of roles(); trackBy: trackByRoleId">
+            <td>
+              <span class="role-id">#{{ role.roleId }}</span>
+            </td>
+            <td>
+              <div class="role-name">
+                <span class="role-badge" [class]="role.name.toLowerCase()">
+                  {{ role.name }}
+                </span>
+              </div>
+            </td>
+            <td class="actions">
+              <button 
+                class="btn-action btn-edit"
+                (click)="openEditModal(role)"
+                [disabled]="isLoading()"
+                title="Editar rol">
+                ✏️ Editar
+              </button>
+              <button 
+                class="btn-action btn-delete"
+                (click)="deleteRole(role)"
+                [disabled]="isLoading()"
+                title="Eliminar rol">
+                🗑️ Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <ng-template #noRoles>
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No hay roles registrados</h3>
+          <p>Comienza creando tu primer rol</p>
+          <button class="btn-primary" (click)="openCreateModal()">
+            <span class="btn-icon">+</span>
+            Crear Primer Rol
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal de Crear/Editar -->
+  <div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="modal-icon">{{ isEditing() ? '✏️' : '➕' }}</span>
+          {{ isEditing() ? 'Editar Rol' : 'Nuevo Rol' }}
+        </h2>
+        <button class="btn-close" (click)="closeModal()" [disabled]="isLoading()">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveRole()" #roleForm="ngForm">
+          <!-- ID (solo en modo edición) -->
+          <div class="form-group" *ngIf="isEditing()">
+            <label>ID del Rol</label>
+            <input 
+              type="text" 
+              [value]="currentRole().roleId" 
+              disabled
+              class="form-control">
+          </div>
+
+          <!-- Nombre del Rol -->
+          <div class="form-group">
+            <label for="roleName">
+              <span class="required">*</span>
+              Nombre del Rol
+            </label>
+            <input 
+              type="text"
+              id="roleName"
+              name="roleName"
+              [ngModel]="currentRole().name"
+              (ngModelChange)="updateRoleName($event)"
+              required
+              maxlength="20"
+              placeholder="Ej: Admin, Waiter, Chef"
+              class="form-control"
+              [disabled]="isLoading()"
+              #roleNameInput="ngModel">
+            
+            <div class="form-hint" *ngIf="!roleNameInput.errors">
+              {{ currentRole().name.length }}/20 caracteres
+            </div>
+            
+            <div class="form-error" *ngIf="roleNameInput.touched && roleNameInput.errors?.['required']">
+              El nombre del rol es requerido
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-actions">
+            <button 
+              type="button" 
+              class="btn-secondary"
+              (click)="closeModal()"
+              [disabled]="isLoading()">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!roleForm.valid || isLoading()">
+              <span *ngIf="!isLoading()">
+                {{ isEditing() ? '💾 Actualizar' : '➕ Crear' }}
+              </span>
+              <span *ngIf="isLoading()">
+                Guardando...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+

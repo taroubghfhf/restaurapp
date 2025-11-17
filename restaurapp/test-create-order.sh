@@ -1,0 +1,33 @@
+#!/bin/bash
+
+echo "🍽️  Creando orden de prueba para WebSocket..."
+echo ""
+
+# Primero necesitas un token de autenticación
+echo "📝 Para crear una orden necesitas estar autenticado."
+echo ""
+echo "Opción 1: Usa Postman con la colección RestaurAppv1.postman_collection.json"
+echo "Opción 2: Ejecuta este curl con tu token:"
+echo ""
+echo "curl -X POST http://localhost:8080/order-ticket \\"
+echo "  -H 'Content-Type: application/json' \\"
+echo "  -H 'Authorization: Bearer TU_TOKEN_AQUI' \\"
+echo "  -d '{"
+echo "    \"tableId\": 1,"
+echo "    \"waiterId\": 1,"
+echo "    \"chefId\": 1,"
+echo "    \"statusId\": 1"
+echo "  }'"
+echo ""
+echo "📌 IMPORTANTE:"
+echo "   1. Primero inicia sesión en /auth/login para obtener el token"
+echo "   2. Asegúrate de tener una mesa (table), usuario mesero, chef y status creados"
+echo "   3. Mantén abierto el cliente WebSocket para ver la notificación"
+echo ""
+echo "🔧 Pasos rápidos:"
+echo "   1. Abre: http://localhost:8080/websocket-client-example.html"
+echo "   2. Click 'Conectar WebSocket'"
+echo "   3. Crea una orden desde Postman o la app Angular"
+echo "   4. ¡Verás la notificación aparecer en tiempo real! 🎉"
+echo ""
+

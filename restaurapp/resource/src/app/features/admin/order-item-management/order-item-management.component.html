@@ -1,0 +1,336 @@
+<div class="order-item-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">🍽️</span>
+        Gestión de Items de Orden
+      </h1>
+      <p class="subtitle">Administra los productos en cada orden</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()" [disabled]="isLoading()">
+      <span class="btn-icon">+</span>
+      Nuevo Item
+    </button>
+  </div>
+
+  <!-- Loading Spinner -->
+  <app-loading 
+    [isLoading]="isLoading()" 
+    [fullscreen]="false"
+    message="Cargando items...">
+  </app-loading>
+
+  <!-- Tabla de Order Items -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lista de Items</h2>
+      <span class="badge">{{ orderItems().length }} items</span>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading()">
+      <table class="data-table" *ngIf="orderItems().length > 0; else noOrderItems">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Orden</th>
+            <th>Producto</th>
+            <th class="text-center">Cantidad</th>
+            <th class="text-right">Precio Unit.</th>
+            <th class="text-right">Subtotal</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of orderItems(); trackBy: trackByOrderItemId">
+            <td>
+              <span class="item-id">#{{ item.orderItemId }}</span>
+            </td>
+            <td>
+              <div class="order-info">
+                <span class="order-number">📋 Orden #{{ item.orderTicket?.orderTicketId || 'N/A' }}</span>
+                <span class="order-details">{{ item.orderTicket ? getTableName(item.orderTicket) : 'Sin orden asignada' }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="product-info">
+                <span class="product-name">{{ item.product.name }}</span>
+                <span class="product-category">{{ item.product.category?.name || 'Sin categoría' }}</span>
+              </div>
+            </td>
+            <td class="text-center">
+              <span class="quantity-badge">
+                {{ item.quantity }} {{ item.quantity === 1 ? 'unidad' : 'unidades' }}
+              </span>
+            </td>
+            <td class="text-right">
+              <span class="price">{{ formatCurrency(item.product.price) }}</span>
+            </td>
+            <td class="text-right">
+              <span class="subtotal">{{ formatCurrency(item.subtotal) }}</span>
+            </td>
+            <td class="actions">
+              <button 
+                class="btn-action btn-edit"
+                (click)="openEditModal(item)"
+                [disabled]="isLoading()"
+                title="Editar item">
+                ✏️
+              </button>
+              <button 
+                class="btn-action btn-delete"
+                (click)="deleteOrderItem(item)"
+                [disabled]="isLoading()"
+                title="Eliminar item">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <ng-template #noOrderItems>
+        <div class="empty-state">
+          <div class="empty-icon">🍽️</div>
+          <h3>No hay items de orden registrados</h3>
+          <p>Comienza agregando productos a las órdenes</p>
+          <div class="requirements-box">
+            <h4>⚠️ Requisitos previos:</h4>
+            <ul>
+              <li>✅ Tener órdenes creadas</li>
+              <li>✅ Tener productos con stock disponible</li>
+            </ul>
+          </div>
+          <button 
+            class="btn-primary" 
+            (click)="openCreateModal()" 
+            *ngIf="orderTickets().length > 0 && products().length > 0">
+            <span class="btn-icon">+</span>
+            Crear Primer Item
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal de Crear/Editar -->
+  <div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="modal-icon">{{ isEditing() ? '✏️' : '➕' }}</span>
+          {{ isEditing() ? 'Editar Item' : 'Nuevo Item' }}
+        </h2>
+        <button class="btn-close" (click)="closeModal()" [disabled]="isLoading()">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveOrderItem()" #orderItemForm="ngForm">
+          <!-- ID (solo en modo edición) -->
+          <div class="form-group" *ngIf="isEditing()">
+            <label>ID del Item</label>
+            <input 
+              type="text" 
+              [value]="'#' + currentOrderItem().orderItemId" 
+              disabled
+              class="form-control">
+          </div>
+
+          <!-- Orden -->
+          <div class="form-group">
+            <label for="orderTicket">
+              <span class="required">*</span>
+              Orden
+            </label>
+            <select 
+              id="orderTicket"
+              name="orderTicket"
+              [ngModel]="currentOrderItem().orderTicket?.orderTicketId"
+              (ngModelChange)="updateOrderTicket($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || orderTickets().length === 0"
+              #orderTicketInput="ngModel">
+              <option value="" disabled selected>Selecciona una orden</option>
+              <option *ngFor="let order of orderTickets()" [value]="order.orderTicketId">
+                📋 Orden #{{ order.orderTicketId }} - {{ getTableName(order) }} - {{ getUserName(order) }}
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="orderTicketInput.touched && orderTicketInput.errors?.['required']">
+              La orden es requerida
+            </div>
+
+            <div class="form-warning" *ngIf="orderTickets().length === 0">
+              ⚠️ No hay órdenes disponibles. <a routerLink="/admin/order-tickets">Crear orden</a>
+            </div>
+          </div>
+
+          <!-- Producto -->
+          <div class="form-group">
+            <label for="product">
+              <span class="required">*</span>
+              Producto
+            </label>
+            <select 
+              id="product"
+              name="product"
+              [ngModel]="currentOrderItem().product.productId"
+              (ngModelChange)="updateProduct($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || products().length === 0"
+              #productInput="ngModel">
+              <option value="" disabled selected>Selecciona un producto</option>
+              <option *ngFor="let product of products()" [value]="product.productId">
+                {{ product.name }} - {{ formatCurrency(product.price) }} (Stock: {{ product.stock }})
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="productInput.touched && productInput.errors?.['required']">
+              El producto es requerido
+            </div>
+
+            <div class="form-warning" *ngIf="products().length === 0">
+              ⚠️ No hay productos disponibles con stock. <a routerLink="/admin/products">Ver productos</a>
+            </div>
+
+            <div class="form-hint" *ngIf="currentOrderItem().product.productId">
+              💡 El precio se actualiza automáticamente al seleccionar el producto
+            </div>
+          </div>
+
+          <!-- Cantidad -->
+          <div class="form-group">
+            <label for="quantity">
+              <span class="required">*</span>
+              Cantidad
+            </label>
+            <div class="quantity-selector">
+              <button 
+                type="button"
+                class="quantity-btn minus"
+                (click)="updateQuantity((currentOrderItem().quantity - 1).toString())"
+                [disabled]="currentOrderItem().quantity <= 1 || isLoading()">
+                −
+              </button>
+              <input 
+                type="number"
+                id="quantity"
+                name="quantity"
+                [ngModel]="currentOrderItem().quantity"
+                (ngModelChange)="updateQuantity($event)"
+                required
+                min="1"
+                max="100"
+                class="form-control quantity-input"
+                [disabled]="isLoading()"
+                #quantityInput="ngModel">
+              <button 
+                type="button"
+                class="quantity-btn plus"
+                (click)="updateQuantity((currentOrderItem().quantity + 1).toString())"
+                [disabled]="currentOrderItem().quantity >= 100 || isLoading()">
+                +
+              </button>
+            </div>
+            
+            <div class="form-hint">
+              Cantidad de unidades (1-100)
+            </div>
+            
+            <div class="form-error" *ngIf="quantityInput.touched && quantityInput.errors?.['required']">
+              La cantidad es requerida
+            </div>
+          </div>
+
+          <!-- Calculadora de Subtotal -->
+          <div class="subtotal-calculator" *ngIf="currentOrderItem().product.productId && currentOrderItem().quantity > 0">
+            <div class="calculator-header">
+              <h4>🧮 Cálculo del Subtotal</h4>
+            </div>
+            <div class="calculator-body">
+              <div class="calculation-row">
+                <span class="calc-label">Producto:</span>
+                <span class="calc-value">{{ currentOrderItem().product.name }}</span>
+              </div>
+              <div class="calculation-row">
+                <span class="calc-label">Precio unitario:</span>
+                <span class="calc-value">{{ formatCurrency(currentOrderItem().product.price) }}</span>
+              </div>
+              <div class="calculation-row">
+                <span class="calc-label">Cantidad:</span>
+                <span class="calc-value">{{ currentOrderItem().quantity }} {{ currentOrderItem().quantity === 1 ? 'unidad' : 'unidades' }}</span>
+              </div>
+              <div class="calculation-row total">
+                <span class="calc-label">Subtotal:</span>
+                <span class="calc-value total-value">{{ formatCurrency(subtotal()) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen del Item -->
+          <div class="item-summary" *ngIf="currentOrderItem().orderTicket?.orderTicketId && currentOrderItem().product?.productId">
+            <h4>📋 Resumen del Item:</h4>
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="summary-icon">📋</div>
+                <div class="summary-content">
+                  <span class="summary-label">Orden</span>
+                  <span class="summary-value">#{{ currentOrderItem().orderTicket?.orderTicketId }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">🍽️</div>
+                <div class="summary-content">
+                  <span class="summary-label">Producto</span>
+                  <span class="summary-value">{{ currentOrderItem().product.name }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">📦</div>
+                <div class="summary-content">
+                  <span class="summary-label">Cantidad</span>
+                  <span class="summary-value">{{ currentOrderItem().quantity }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">💰</div>
+                <div class="summary-content">
+                  <span class="summary-label">Subtotal</span>
+                  <span class="summary-value">{{ formatCurrency(subtotal()) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-actions">
+            <button 
+              type="button" 
+              class="btn-secondary"
+              (click)="closeModal()"
+              [disabled]="isLoading()">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!orderItemForm.valid || isLoading()">
+              <span *ngIf="!isLoading()">
+                {{ isEditing() ? '💾 Actualizar' : '➕ Crear' }}
+              </span>
+              <span *ngIf="isLoading()">
+                Guardando...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,314 @@
+<div class="table-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">🪑</span>
+        Gestión de Mesas
+      </h1>
+      <p class="subtitle">Administra las mesas del restaurante</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()" [disabled]="isLoading()">
+      <span class="btn-icon">+</span>
+      Nueva Mesa
+    </button>
+  </div>
+
+  <!-- Loading Spinner -->
+  <app-loading 
+    [isLoading]="isLoading()" 
+    [fullscreen]="false"
+    message="Cargando mesas...">
+  </app-loading>
+
+  <!-- Tabla de Mesas -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lista de Mesas</h2>
+      <span class="badge">{{ tables().length }} mesas</span>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading()">
+      <table class="data-table" *ngIf="tables().length > 0; else noTables">
+        <thead>
+          <tr>
+            <th>Mesa</th>
+            <th>Capacidad</th>
+            <th>Ubicación</th>
+            <th>Estado</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let table of tables(); trackBy: trackByTableId">
+            <td>
+              <div class="table-number">
+                <span class="table-icon">🪑</span>
+                <span class="table-id">Mesa #{{ table.tableId }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="capacity-info">
+                <span class="capacity-icon">{{ getCapacityIcon(table.capacity) }}</span>
+                <span class="capacity-text">{{ table.capacity }} {{ table.capacity === 1 ? 'persona' : 'personas' }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="location-tag">
+                <span class="location-icon">📍</span>
+                {{ getLocationName(table.location) }}
+              </span>
+            </td>
+            <td>
+              <span class="status-badge" [class]="getStatusClass(table.status.name)">
+                <span class="status-icon">{{ getStatusIcon(table.status.name) }}</span>
+                {{ table.status.name }}
+              </span>
+            </td>
+            <td class="actions">
+              <button 
+                class="btn-action btn-edit"
+                (click)="openEditModal(table)"
+                [disabled]="isLoading()"
+                title="Editar mesa">
+                ✏️ Editar
+              </button>
+              <button 
+                class="btn-action btn-delete"
+                (click)="deleteTable(table)"
+                [disabled]="isLoading()"
+                title="Eliminar mesa">
+                🗑️ Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <ng-template #noTables>
+        <div class="empty-state">
+          <div class="empty-icon">🪑</div>
+          <h3>No hay mesas registradas</h3>
+          <p>Comienza agregando mesas al restaurante</p>
+          <div class="example-list">
+            <p><strong>Necesitas tener estados creados primero</strong></p>
+            <p class="hint">Ve a Gestión de Estados para crear estados como: Disponible, Ocupado, Reservado, etc.</p>
+          </div>
+          <button class="btn-primary" (click)="openCreateModal()" *ngIf="statuses().length > 0">
+            <span class="btn-icon">+</span>
+            Crear Primera Mesa
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal de Crear/Editar -->
+  <div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="modal-icon">{{ isEditing() ? '✏️' : '➕' }}</span>
+          {{ isEditing() ? 'Editar Mesa' : 'Nueva Mesa' }}
+        </h2>
+        <button class="btn-close" (click)="closeModal()" [disabled]="isLoading()">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveTable()" #tableForm="ngForm">
+          <!-- ID (solo en modo edición) -->
+          <div class="form-group" *ngIf="isEditing()">
+            <label>Número de Mesa</label>
+            <input 
+              type="text" 
+              [value]="'Mesa #' + currentTable().tableId" 
+              disabled
+              class="form-control">
+          </div>
+
+          <!-- Capacidad -->
+          <div class="form-group">
+            <label for="tableCapacity">
+              <span class="required">*</span>
+              Capacidad
+            </label>
+            <div class="capacity-selector">
+              <button 
+                type="button"
+                class="capacity-btn minus"
+                (click)="updateTableCapacity((currentTable().capacity - 1).toString())"
+                [disabled]="currentTable().capacity <= 1 || isLoading()">
+                −
+              </button>
+              <div class="capacity-display">
+                <span class="capacity-icon-large">{{ getCapacityIcon(currentTable().capacity) }}</span>
+                <input 
+                  type="number"
+                  id="tableCapacity"
+                  name="tableCapacity"
+                  [ngModel]="currentTable().capacity"
+                  (ngModelChange)="updateTableCapacity($event)"
+                  required
+                  min="1"
+                  max="20"
+                  class="form-control capacity-input"
+                  [disabled]="isLoading()"
+                  #tableCapacityInput="ngModel">
+                <span class="capacity-label">{{ currentTable().capacity === 1 ? 'persona' : 'personas' }}</span>
+              </div>
+              <button 
+                type="button"
+                class="capacity-btn plus"
+                (click)="updateTableCapacity((currentTable().capacity + 1).toString())"
+                [disabled]="currentTable().capacity >= 20 || isLoading()">
+                +
+              </button>
+            </div>
+            
+            <div class="form-hint">
+              Selecciona el número de personas que puede acomodar la mesa (1-20)
+            </div>
+            
+            <div class="form-error" *ngIf="tableCapacityInput.touched && tableCapacityInput.errors?.['required']">
+              La capacidad es requerida
+            </div>
+          </div>
+
+          <!-- Ubicación -->
+          <div class="form-group">
+            <label for="tableLocation">
+              <span class="required">*</span>
+              Ubicación
+            </label>
+            <select 
+              id="tableLocation"
+              name="tableLocation"
+              [ngModel]="currentTable().location"
+              (ngModelChange)="updateTableLocation($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading()"
+              #tableLocationInput="ngModel">
+              <option value="1">📍 Terraza</option>
+              <option value="2">📍 Interior</option>
+              <option value="3">📍 VIP</option>
+              <option value="4">📍 Barra</option>
+              <option value="5">📍 Exterior</option>
+            </select>
+            
+            <div class="form-hint">
+              Selecciona el área donde está ubicada la mesa
+            </div>
+            
+            <div class="form-error" *ngIf="tableLocationInput.touched && tableLocationInput.errors?.['required']">
+              La ubicación es requerida
+            </div>
+          </div>
+
+          <!-- Estado -->
+          <div class="form-group">
+            <label for="tableStatus">
+              <span class="required">*</span>
+              Estado
+            </label>
+            <select 
+              id="tableStatus"
+              name="tableStatus"
+              [ngModel]="currentTable().status.statusId"
+              (ngModelChange)="updateTableStatus($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || statuses().length === 0"
+              #tableStatusInput="ngModel">
+              <option value="" disabled selected>Selecciona un estado</option>
+              <option *ngFor="let status of statuses()" [value]="status.statusId">
+                {{ status.name }}
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="tableStatusInput.touched && tableStatusInput.errors?.['required']">
+              El estado es requerido
+            </div>
+
+            <div class="form-warning" *ngIf="statuses().length === 0">
+              ⚠️ No hay estados disponibles. <a routerLink="/admin/status">Crear estado</a>
+            </div>
+
+            <div class="status-examples">
+              <p><strong>Estados sugeridos:</strong></p>
+              <div class="status-badges">
+                <span class="example-status status-available">✅ Disponible</span>
+                <span class="example-status status-occupied">🔒 Ocupado</span>
+                <span class="example-status status-reserved">📅 Reservado</span>
+                <span class="example-status status-cleaning">🧹 Limpieza</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen -->
+          <div class="table-summary" *ngIf="currentTable().status.statusId">
+            <h4>📋 Resumen de la Mesa:</h4>
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="summary-icon">🪑</div>
+                <div class="summary-content">
+                  <span class="summary-label">Mesa</span>
+                  <span class="summary-value">#{{ currentTable().tableId || 'Nueva' }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">{{ getCapacityIcon(currentTable().capacity) }}</div>
+                <div class="summary-content">
+                  <span class="summary-label">Capacidad</span>
+                  <span class="summary-value">{{ currentTable().capacity }} {{ currentTable().capacity === 1 ? 'persona' : 'personas' }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">📍</div>
+                <div class="summary-content">
+                  <span class="summary-label">Ubicación</span>
+                  <span class="summary-value">{{ getLocationName(currentTable().location) }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">{{ getStatusIcon(currentTable().status.name) }}</div>
+                <div class="summary-content">
+                  <span class="summary-label">Estado</span>
+                  <span class="summary-value">{{ currentTable().status.name }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-actions">
+            <button 
+              type="button" 
+              class="btn-secondary"
+              (click)="closeModal()"
+              [disabled]="isLoading()">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!tableForm.valid || isLoading()">
+              <span *ngIf="!isLoading()">
+                {{ isEditing() ? '💾 Actualizar' : '➕ Crear' }}
+              </span>
+              <span *ngIf="isLoading()">
+                Guardando...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+

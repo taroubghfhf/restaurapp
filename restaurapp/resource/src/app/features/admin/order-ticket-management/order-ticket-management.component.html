@@ -1,0 +1,376 @@
+<div class="order-ticket-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">📋</span>
+        Gestión de Órdenes
+      </h1>
+      <p class="subtitle">Administra las órdenes del restaurante</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()" [disabled]="isLoading()">
+      <span class="btn-icon">+</span>
+      Nueva Orden
+    </button>
+  </div>
+
+  <!-- Loading Spinner -->
+  <app-loading 
+    [isLoading]="isLoading()" 
+    [fullscreen]="false"
+    message="Cargando órdenes...">
+  </app-loading>
+
+  <!-- Tabla de Órdenes -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lista de Órdenes</h2>
+      <span class="badge">{{ orderTickets().length }} órdenes</span>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading()">
+      <table class="data-table" *ngIf="orderTickets().length > 0; else noOrderTickets">
+        <thead>
+          <tr>
+            <th>Orden</th>
+            <th>Mesa</th>
+            <th>Mesero</th>
+            <th>Chef</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let order of orderTickets(); trackBy: trackByOrderTicketId">
+            <td>
+              <span class="order-number">📋 Orden #{{ order.orderTicketId }}</span>
+            </td>
+            <td>
+              <div class="table-info">
+                <span class="table-name">{{ getTableName(order.table) }}</span>
+                <span class="table-location">{{ getTableLocation(order.table) }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="user-info">
+                <span class="user-icon">🍽️</span>
+                <span class="user-name">{{ order.waiter.name }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="user-info">
+                <span class="user-icon">👨‍🍳</span>
+                <span class="user-name">{{ order.chef.name }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="date-text">{{ formatDate(order.date) }}</span>
+            </td>
+            <td>
+              <span class="status-badge" [class]="getStatusClass(order.status.name)">
+                <span class="status-icon">{{ getStatusIcon(order.status.name) }}</span>
+                {{ order.status.name }}
+              </span>
+            </td>
+            <td class="actions">
+              <button 
+                class="btn-action btn-view"
+                (click)="viewOrderItems(order)"
+                [disabled]="isLoading()"
+                title="Ver items">
+                👁️
+              </button>
+              <button 
+                class="btn-action btn-edit"
+                (click)="openEditModal(order)"
+                [disabled]="isLoading()"
+                title="Editar orden">
+                ✏️
+              </button>
+              <button 
+                class="btn-action btn-delete"
+                (click)="deleteOrderTicket(order)"
+                [disabled]="isLoading()"
+                title="Eliminar orden">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <ng-template #noOrderTickets>
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No hay órdenes registradas</h3>
+          <p>Comienza creando la primera orden del restaurante</p>
+          <div class="requirements-box">
+            <h4>⚠️ Requisitos previos:</h4>
+            <ul>
+              <li>✅ Tener mesas creadas</li>
+              <li>✅ Tener usuarios con rol Mesero y Chef</li>
+              <li>✅ Tener estados para órdenes</li>
+            </ul>
+          </div>
+          <button 
+            class="btn-primary" 
+            (click)="openCreateModal()" 
+            *ngIf="tables().length > 0 && users().length > 0 && statuses().length > 0">
+            <span class="btn-icon">+</span>
+            Crear Primera Orden
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal de Crear/Editar -->
+  <div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="modal-icon">{{ isEditing() ? '✏️' : '➕' }}</span>
+          {{ isEditing() ? 'Editar Orden' : 'Nueva Orden' }}
+        </h2>
+        <button class="btn-close" (click)="closeModal()" [disabled]="isLoading()">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveOrderTicket()" #orderTicketForm="ngForm">
+          <!-- ID (solo en modo edición) -->
+          <div class="form-group" *ngIf="isEditing()">
+            <label>Número de Orden</label>
+            <input 
+              type="text" 
+              [value]="'Orden #' + currentOrderTicket().orderTicketId" 
+              disabled
+              class="form-control">
+          </div>
+
+          <!-- Fecha y Hora -->
+          <div class="form-group">
+            <label for="orderDate">
+              <span class="required">*</span>
+              Fecha y Hora
+            </label>
+            <input 
+              type="datetime-local"
+              id="orderDate"
+              name="orderDate"
+              [ngModel]="currentOrderTicket().date | date:'yyyy-MM-ddTHH:mm'"
+              (ngModelChange)="updateDate($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading()"
+              #orderDateInput="ngModel">
+            
+            <div class="form-hint">
+              📅 Fecha y hora de la orden
+            </div>
+            
+            <div class="form-error" *ngIf="orderDateInput.touched && orderDateInput.errors?.['required']">
+              La fecha es requerida
+            </div>
+          </div>
+
+          <!-- Mesa -->
+          <div class="form-group">
+            <label for="table">
+              <span class="required">*</span>
+              Mesa
+            </label>
+            <select 
+              id="table"
+              name="table"
+              [ngModel]="currentOrderTicket().table.tableId"
+              (ngModelChange)="updateTable($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || tables().length === 0"
+              #tableInput="ngModel">
+              <option value="" disabled selected>Selecciona una mesa</option>
+              <option *ngFor="let table of tables()" [value]="table.tableId">
+                🪑 Mesa #{{ table.tableId }} - {{ getTableLocation(table) }} ({{ table.capacity }} personas)
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="tableInput.touched && tableInput.errors?.['required']">
+              La mesa es requerida
+            </div>
+
+            <div class="form-warning" *ngIf="tables().length === 0">
+              ⚠️ No hay mesas disponibles. <a routerLink="/admin/tables">Crear mesa</a>
+            </div>
+          </div>
+
+          <!-- Mesero -->
+          <div class="form-group">
+            <label for="waiter">
+              <span class="required">*</span>
+              Mesero
+            </label>
+            <select 
+              id="waiter"
+              name="waiter"
+              [ngModel]="currentOrderTicket().waiter.userId"
+              (ngModelChange)="updateWaiter($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || getWaiters().length === 0"
+              #waiterInput="ngModel">
+              <option value="" disabled selected>Selecciona un mesero</option>
+              <option *ngFor="let waiter of getWaiters()" [value]="waiter.userId">
+                🍽️ {{ waiter.name }}
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="waiterInput.touched && waiterInput.errors?.['required']">
+              El mesero es requerido
+            </div>
+
+            <div class="form-warning" *ngIf="getWaiters().length === 0">
+              ⚠️ No hay meseros disponibles. <a routerLink="/admin/users">Crear usuario con rol Mesero</a>
+            </div>
+          </div>
+
+          <!-- Chef -->
+          <div class="form-group">
+            <label for="chef">
+              <span class="required">*</span>
+              Chef
+            </label>
+            <select 
+              id="chef"
+              name="chef"
+              [ngModel]="currentOrderTicket().chef.userId"
+              (ngModelChange)="updateChef($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || getChefs().length === 0"
+              #chefInput="ngModel">
+              <option value="" disabled selected>Selecciona un chef</option>
+              <option *ngFor="let chef of getChefs()" [value]="chef.userId">
+                👨‍🍳 {{ chef.name }}
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="chefInput.touched && chefInput.errors?.['required']">
+              El chef es requerido
+            </div>
+
+            <div class="form-warning" *ngIf="getChefs().length === 0">
+              ⚠️ No hay chefs disponibles. <a routerLink="/admin/users">Crear usuario con rol Chef</a>
+            </div>
+          </div>
+
+          <!-- Estado -->
+          <div class="form-group">
+            <label for="status">
+              <span class="required">*</span>
+              Estado
+            </label>
+            <select 
+              id="status"
+              name="status"
+              [ngModel]="currentOrderTicket().status.statusId"
+              (ngModelChange)="updateStatus($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || statuses().length === 0"
+              #statusInput="ngModel">
+              <option value="" disabled selected>Selecciona un estado</option>
+              <option *ngFor="let status of statuses()" [value]="status.statusId">
+                {{ status.name }}
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="statusInput.touched && statusInput.errors?.['required']">
+              El estado es requerido
+            </div>
+
+            <div class="form-warning" *ngIf="statuses().length === 0">
+              ⚠️ No hay estados disponibles. <a routerLink="/admin/status">Crear estado</a>
+            </div>
+
+            <div class="status-examples">
+              <p><strong>Estados sugeridos para órdenes:</strong></p>
+              <div class="status-badges">
+                <span class="example-status status-pending">⏳ Pendiente</span>
+                <span class="example-status status-preparing">👨‍🍳 Preparando</span>
+                <span class="example-status status-ready">✅ Listo</span>
+                <span class="example-status status-delivered">🍽️ Entregado</span>
+                <span class="example-status status-completed">✔️ Completado</span>
+                <span class="example-status status-cancelled">❌ Cancelado</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen de la Orden -->
+          <div class="order-summary" *ngIf="currentOrderTicket().table.tableId && currentOrderTicket().waiter.userId && currentOrderTicket().chef.userId && currentOrderTicket().status.statusId">
+            <h4>📋 Resumen de la Orden:</h4>
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="summary-icon">🪑</div>
+                <div class="summary-content">
+                  <span class="summary-label">Mesa</span>
+                  <span class="summary-value">{{ getTableName(currentOrderTicket().table) }}</span>
+                  <span class="summary-detail">{{ getTableLocation(currentOrderTicket().table) }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">🍽️</div>
+                <div class="summary-content">
+                  <span class="summary-label">Mesero</span>
+                  <span class="summary-value">{{ currentOrderTicket().waiter.name }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">👨‍🍳</div>
+                <div class="summary-content">
+                  <span class="summary-label">Chef</span>
+                  <span class="summary-value">{{ currentOrderTicket().chef.name }}</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon">{{ getStatusIcon(currentOrderTicket().status.name) }}</div>
+                <div class="summary-content">
+                  <span class="summary-label">Estado</span>
+                  <span class="summary-value">{{ currentOrderTicket().status.name }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-actions">
+            <button 
+              type="button" 
+              class="btn-secondary"
+              (click)="closeModal()"
+              [disabled]="isLoading()">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!orderTicketForm.valid || isLoading()">
+              <span *ngIf="!isLoading()">
+                {{ isEditing() ? '💾 Actualizar' : '➕ Crear' }}
+              </span>
+              <span *ngIf="isLoading()">
+                Guardando...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+

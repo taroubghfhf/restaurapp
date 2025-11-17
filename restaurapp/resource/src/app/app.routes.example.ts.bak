@@ -1,0 +1,132 @@
+import { Routes } from '@angular/router';
+import { authGuard, roleGuard } from './core/guards';
+
+/**
+ * EJEMPLO de configuración de rutas con guards
+ * 
+ * Este archivo muestra cómo configurar rutas protegidas con autenticación
+ * y autorización por roles.
+ * 
+ * Para usar estas rutas, renombra este archivo a app.routes.ts y crea los
+ * componentes correspondientes.
+ */
+export const routes: Routes = [
+  // Rutas públicas (sin guards)
+  {
+    path: 'login',
+    loadComponent: () => import('./features/auth/login/login.component')
+      .then(m => m.LoginComponent)
+  },
+  {
+    path: 'access-denied',
+    loadComponent: () => import('./features/auth/access-denied/access-denied.component')
+      .then(m => m.AccessDeniedComponent)
+  },
+
+  // Rutas protegidas con autenticación
+  {
+    path: 'dashboard',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/dashboard/dashboard.component')
+      .then(m => m.DashboardComponent)
+  },
+
+  // Rutas protegidas por rol: Solo Admin
+  {
+    path: 'admin',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['Admin'] },
+    children: [
+      {
+        path: 'users',
+        loadComponent: () => import('./features/admin/users/users.component')
+          .then(m => m.UsersComponent)
+      },
+      {
+        path: 'roles',
+        loadComponent: () => import('./features/admin/roles/roles.component')
+          .then(m => m.RolesComponent)
+      },
+      {
+        path: 'categories',
+        loadComponent: () => import('./features/admin/categories/categories.component')
+          .then(m => m.CategoriesComponent)
+      }
+    ]
+  },
+
+  // Rutas protegidas por rol: Admin o Waiter
+  {
+    path: 'orders',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['Admin', 'Waiter'] },
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/orders/order-list/order-list.component')
+          .then(m => m.OrderListComponent)
+      },
+      {
+        path: 'new',
+        loadComponent: () => import('./features/orders/order-form/order-form.component')
+          .then(m => m.OrderFormComponent)
+      },
+      {
+        path: ':id',
+        loadComponent: () => import('./features/orders/order-detail/order-detail.component')
+          .then(m => m.OrderDetailComponent)
+      }
+    ]
+  },
+
+  // Rutas protegidas por rol: Admin o Chef
+  {
+    path: 'kitchen',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['Admin', 'Chef'] },
+    loadComponent: () => import('./features/kitchen/kitchen.component')
+      .then(m => m.KitchenComponent)
+  },
+
+  // Rutas protegidas por rol: Cualquier usuario autenticado
+  {
+    path: 'products',
+    canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/products/product-list/product-list.component')
+          .then(m => m.ProductListComponent)
+      },
+      {
+        path: ':id',
+        loadComponent: () => import('./features/products/product-detail/product-detail.component')
+          .then(m => m.ProductDetailComponent)
+      }
+    ]
+  },
+
+  // Rutas de tablas
+  {
+    path: 'tables',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['Admin', 'Waiter'] },
+    loadComponent: () => import('./features/tables/tables.component')
+      .then(m => m.TablesComponent)
+  },
+
+  // Ruta por defecto
+  {
+    path: '',
+    redirectTo: 'dashboard',
+    pathMatch: 'full'
+  },
+
+  // Ruta 404
+  {
+    path: '**',
+    loadComponent: () => import('./features/not-found/not-found.component')
+      .then(m => m.NotFoundComponent)
+  }
+];
+

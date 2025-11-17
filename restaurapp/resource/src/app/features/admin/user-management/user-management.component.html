@@ -1,0 +1,288 @@
+<div class="user-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">👥</span>
+        Gestión de Usuarios
+      </h1>
+      <p class="subtitle">Administra usuarios del sistema y sus roles</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()" [disabled]="isLoading()">
+      <span class="btn-icon">+</span>
+      Nuevo Usuario
+    </button>
+  </div>
+
+  <!-- Loading Spinner -->
+  <app-loading 
+    [isLoading]="isLoading()" 
+    [fullscreen]="false"
+    message="Cargando usuarios...">
+  </app-loading>
+
+  <!-- Tabla de Usuarios -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lista de Usuarios</h2>
+      <span class="badge">{{ users().length }} usuarios</span>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading()">
+      <table class="data-table" *ngIf="users().length > 0; else noUsers">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users(); trackBy: trackByUserId">
+            <td>
+              <span class="user-id">#{{ user.userId }}</span>
+            </td>
+            <td>
+              <div class="user-name">
+                <span class="name-icon">👤</span>
+                <span class="name-text">{{ user.name }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="user-email">
+                <span class="email-icon">📧</span>
+                <span class="email-text">{{ user.email }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="role-badge" [class]="getRoleClass(user.role.name)">
+                <span class="role-icon">{{ getRoleIcon(user.role.name) }}</span>
+                {{ user.role.name }}
+              </span>
+            </td>
+            <td class="actions">
+              <button 
+                class="btn-action btn-edit"
+                (click)="openEditModal(user)"
+                [disabled]="isLoading()"
+                title="Editar usuario">
+                ✏️ Editar
+              </button>
+              <button 
+                class="btn-action btn-delete"
+                (click)="deleteUser(user)"
+                [disabled]="isLoading()"
+                title="Eliminar usuario">
+                🗑️ Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <ng-template #noUsers>
+        <div class="empty-state">
+          <div class="empty-icon">👥</div>
+          <h3>No hay usuarios registrados</h3>
+          <p>Comienza creando tu primer usuario del sistema</p>
+          <button class="btn-primary" (click)="openCreateModal()">
+            <span class="btn-icon">+</span>
+            Crear Primer Usuario
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal de Crear/Editar -->
+  <div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="modal-icon">{{ isEditing() ? '✏️' : '➕' }}</span>
+          {{ isEditing() ? 'Editar Usuario' : 'Nuevo Usuario' }}
+        </h2>
+        <button class="btn-close" (click)="closeModal()" [disabled]="isLoading()">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveUser()" #userForm="ngForm">
+          <!-- ID (solo en modo edición) -->
+          <div class="form-group" *ngIf="isEditing()">
+            <label>ID del Usuario</label>
+            <input 
+              type="text" 
+              [value]="currentUser().userId" 
+              disabled
+              class="form-control">
+          </div>
+
+          <!-- Nombre -->
+          <div class="form-group">
+            <label for="userName">
+              <span class="required">*</span>
+              Nombre Completo
+            </label>
+            <input 
+              type="text"
+              id="userName"
+              name="userName"
+              [ngModel]="currentUser().name"
+              (ngModelChange)="updateUserName($event)"
+              required
+              maxlength="50"
+              placeholder="Ej: Juan Pérez"
+              class="form-control"
+              [disabled]="isLoading()"
+              #userNameInput="ngModel">
+            
+            <div class="form-hint" *ngIf="!userNameInput.errors">
+              {{ currentUser().name.length }}/50 caracteres
+            </div>
+            
+            <div class="form-error" *ngIf="userNameInput.touched && userNameInput.errors?.['required']">
+              El nombre completo es requerido
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="userEmail">
+              <span class="required">*</span>
+              Email
+            </label>
+            <input 
+              type="email"
+              id="userEmail"
+              name="userEmail"
+              [ngModel]="currentUser().email"
+              (ngModelChange)="updateUserEmail($event)"
+              required
+              email
+              maxlength="100"
+              placeholder="ejemplo@restaurapp.com"
+              class="form-control"
+              [disabled]="isLoading()"
+              #userEmailInput="ngModel">
+            
+            <div class="form-error" *ngIf="userEmailInput.touched && userEmailInput.errors?.['required']">
+              El email es requerido
+            </div>
+            
+            <div class="form-error" *ngIf="userEmailInput.touched && userEmailInput.errors?.['email']">
+              Email no válido
+            </div>
+          </div>
+
+          <!-- Contraseña -->
+          <div class="form-group">
+            <label for="userPassword">
+              <span class="required" *ngIf="!isEditing()">*</span>
+              Contraseña
+              <span class="optional-label" *ngIf="isEditing()">(Opcional - dejar vacío para no cambiar)</span>
+            </label>
+            <div class="password-wrapper">
+              <input 
+                [type]="showPassword() ? 'text' : 'password'"
+                id="userPassword"
+                name="userPassword"
+                [ngModel]="currentUser().password"
+                (ngModelChange)="updateUserPassword($event)"
+                [required]="!isEditing()"
+                minlength="6"
+                maxlength="225"
+                placeholder="Mínimo 6 caracteres"
+                class="form-control"
+                [disabled]="isLoading()"
+                #userPasswordInput="ngModel">
+              <button 
+                type="button"
+                class="password-toggle"
+                (click)="togglePasswordVisibility()"
+                [disabled]="isLoading()">
+                {{ showPassword() ? '👁️' : '👁️‍🗨️' }}
+              </button>
+            </div>
+            
+            <div class="form-error" *ngIf="userPasswordInput.touched && userPasswordInput.errors?.['required']">
+              La contraseña es requerida
+            </div>
+            
+            <div class="form-error" *ngIf="userPasswordInput.touched && userPasswordInput.errors?.['minlength']">
+              La contraseña debe tener al menos 6 caracteres
+            </div>
+
+            <div class="form-info" *ngIf="!isEditing()">
+              <strong>💡 Tip:</strong> Usa una contraseña segura de al menos 6 caracteres
+            </div>
+          </div>
+
+          <!-- Rol -->
+          <div class="form-group">
+            <label for="userRole">
+              <span class="required">*</span>
+              Rol del Usuario
+            </label>
+            <select 
+              id="userRole"
+              name="userRole"
+              [ngModel]="currentUser().role.roleId"
+              (ngModelChange)="updateUserRole($event)"
+              required
+              class="form-control"
+              [disabled]="isLoading() || roles().length === 0"
+              #userRoleInput="ngModel">
+              <option value="" disabled selected>Selecciona un rol</option>
+              <option *ngFor="let role of roles()" [value]="role.roleId">
+                {{ role.name }}
+              </option>
+            </select>
+            
+            <div class="form-error" *ngIf="userRoleInput.touched && userRoleInput.errors?.['required']">
+              Debe seleccionar un rol
+            </div>
+
+            <div class="form-info">
+              <strong>📋 Roles disponibles:</strong>
+              <div class="roles-info">
+                <span class="info-badge role-admin">👑 Admin</span>
+                <span class="info-badge role-waiter">🍽️ Waiter</span>
+                <span class="info-badge role-chef">👨‍🍳 Chef</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-actions">
+            <button 
+              type="button" 
+              class="btn-secondary"
+              (click)="closeModal()"
+              [disabled]="isLoading()">
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!userForm.valid || isLoading()">
+              <span *ngIf="!isLoading()">
+                {{ isEditing() ? '💾 Actualizar' : '➕ Crear' }}
+              </span>
+              <span *ngIf="isLoading()">
+                Guardando...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
